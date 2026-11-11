@@ -1,9 +1,9 @@
 /// Contacts, the Arche phone's (docs/sprints.md T7 in arche-os): the
 /// phone's contacts, names for numbers, which Phone and Messages and the
 /// call screen say too. Each in the list, its name over its number, opens
-/// to Call and Delete; a new one is its name and number, and Save. An app
-/// of the phone's world: it may read and change the contacts (contacts)
-/// and make calls (telephony).
+/// to Call and Delete; a new one is its name and number, and Save, which
+/// empties the form again. An app of the phone's world: it may read and
+/// change the contacts (contacts) and make calls (telephony).
 import alloc;
 import contacts;
 import host_api;
@@ -61,5 +61,8 @@ fn update(state: &mut Contacts, host: &mut std.Host, a: alloc.Allocator) {
     state.number = host_api.ui_text_edit(host, text: state.number.view(), a: a);
     if host_api.ui_button(host, text: "Save") and state.name.len() > 0 and state.number.len() > 0 {
         contacts.save(host, name: state.name.view(), number: state.number.view());
+        // Saved, the form empty again for the next.
+        state.name = alloc.String.init(a);
+        state.number = alloc.String.init(a);
     }
 }

@@ -6,7 +6,7 @@ It works like Android's:
 
 - The phone's contacts, a name for each number, in order of their names. The phone keeps them, not the app: Phone and Messages show the names too, and so do the call screen and the notifications of messages that come.
 - A contact opens to Call, which the phone's call screen takes from there, and Delete.
-- A new contact is its name and number, and Save; a number saved again is renamed.
+- A new contact is its name and number, and Save, which empties the form for the next; a number saved again is renamed.
 
 `manifest` says what it may do: read and change the contacts (`contacts`) and make calls (`telephony`).
 
