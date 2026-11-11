@@ -1,0 +1,65 @@
+/// Contacts, the Arche phone's (docs/sprints.md T7 in arche-os): the
+/// phone's contacts, names for numbers, which Phone and Messages and the
+/// call screen say too. Each in the list, its name over its number, opens
+/// to Call and Delete; a new one is its name and number, and Save. An app
+/// of the phone's world: it may read and change the contacts (contacts)
+/// and make calls (telephony).
+import alloc;
+import contacts;
+import host_api;
+import std;
+import telephony;
+
+type Contacts = struct {
+    /// The number of the contact opened; empty for the list.
+    open: alloc.String,
+    name: alloc.String,
+    number: alloc.String,
+}
+
+fn init(host: &mut std.Host, a: alloc.Allocator) -> Contacts {
+    return Contacts { open: alloc.String.init(a), name: alloc.String.init(a), number: alloc.String.init(a) };
+}
+
+fn update(state: &mut Contacts, host: &mut std.Host, a: alloc.Allocator) {
+    let all = contacts.list(host, a: a);
+    if state.open.len() > 0 {
+        for c in all.items() {
+            if c.number.view().eq(state.open.view()) {
+                host_api.ui_heading(host, text: c.name.view(), level: 1);
+                host_api.ui_label(host, text: c.number.view());
+                host_api.ui_begin(host, kind: "row");
+                if host_api.ui_button(host, text: "Call") {
+                    telephony.dial(host, number: c.number.view());
+                }
+                if host_api.ui_button(host, text: "Delete") {
+                    contacts.remove(host, number: c.number.view());
+                    state.open = alloc.String.init(a);
+                }
+                if host_api.ui_button(host, text: "Back") {
+                    state.open = alloc.String.init(a);
+                }
+                host_api.ui_end(host);
+                return;
+            }
+        }
+        // Gone, as one deleted is: the list again.
+        state.open = alloc.String.init(a);
+    }
+    host_api.ui_heading(host, text: "Contacts", level: 1);
+    if all.len() == 0 {
+        host_api.ui_label(host, text: "No contacts yet");
+    }
+    for c in all.items() {
+        if host_api.ui_tile(host, title: c.name.view(), subtitle: c.number.view()) {
+            state.open = alloc.String.from(c.number.view(), a);
+        }
+    }
+    host_api.ui_separator(host);
+    host_api.ui_heading(host, text: "New contact", level: 2);
+    state.name = host_api.ui_text_edit(host, text: state.name.view(), a: a);
+    state.number = host_api.ui_text_edit(host, text: state.number.view(), a: a);
+    if host_api.ui_button(host, text: "Save") and state.name.len() > 0 and state.number.len() > 0 {
+        contacts.save(host, name: state.name.view(), number: state.number.view());
+    }
+}

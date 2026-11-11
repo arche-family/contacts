@@ -1,0 +1,6 @@
+name: contacts
+version: 1
+title: Contacts
+about: Names for numbers, which the phone says too
+publisher: arche
+needs: contacts telephony
