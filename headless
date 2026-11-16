@@ -1,1 +1,1 @@
---frames 4 --input 1:0=Ada --input 1:1=+998901112233 --script 2:0 --add arche:phone/contacts@0.1.0#list=[] --add arche:phone/contacts@0.1.0#save --add arche:phone/contacts@0.1.0#remove --add arche:phone/telephony@0.1.0#dial
+--frames 7 --click 1:58,4:25,5:58,6:20 --type 2:33=Ada --type 3:38=+998901112233 --add arche:phone/contacts@0.1.0#list=[] --add arche:phone/contacts@0.1.0#save --add arche:phone/contacts@0.1.0#remove --add arche:phone/telephony@0.1.0#dial

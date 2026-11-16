@@ -1,42 +1,457 @@
-=== headless run: 4 frames ===
+=== headless run: 7 frames ===
 
 --- frame 0  (clicks fed to guest: []) ---
-   heading1 : "Contacts"
-   label   : "No contacts yet"
-   ----
-   heading2 : "New contact"
-   field0  : ""
-   field1  : ""
-   button0 : "Save"
+   [page] 60 nodes
+   #1 body
+     #2 div.app {click input}
+       #3 div.content
+         #4 div.view
+           #5 div.big
+             #6 "Contacts"
+           #7 div.search
+             #8 span.icon
+               #9 "search"
+             #10 input.find [placeholder="Search contacts"] value=""
+           #11 div.count
+           #12 div.list
+           #13 div.empty.none
+             #14 span.icon
+               #15 "person"
+             #16 div
+               #17 "No contacts yet"
+         #18 div.view.hidden
+           #19 div.head
+             #20 button.iconbtn [data-k="close"]
+               #21 span.icon
+                 #22 "close"
+             #23 div.title
+               #24 "New contact"
+             #25 button.btn.primary [data-k="save"]
+               #26 "Save"
+           #27 div.form
+             #28 div.group
+               #29 div.row
+                 #30 div.tile [style="background: #2f80ed"]
+                   #31 span.icon.fill
+                     #32 "person"
+                 #33 input.name [placeholder="Name"] value=""
+               #34 div.row
+                 #35 div.tile [style="background: #2db55d"]
+                   #36 span.icon.fill
+                     #37 "call"
+                 #38 input.number [placeholder="Phone number"] value=""
+         #39 div.view.hidden
+           #40 div.head
+             #41 button.iconbtn [data-k="back"]
+               #42 span.icon
+                 #43 "arrow_back"
+           #44 div.who
+           #45 div.acts
+             #46 button.act.go [data-k="call"]
+               #47 div.round
+                 #48 span.icon.fill
+                   #49 "call"
+               #50 span
+                 #51 "Call"
+             #52 button.act.bad [data-k="delete"]
+               #53 div.round
+                 #54 span.icon
+                   #55 "delete"
+               #56 span
+                 #57 "Delete"
+       #58 button.fab [data-k="new"]
+         #59 span.icon
+           #60 "add"
+   [call] arche:phone/contacts@0.1.0#list()
    [call] arche:phone/contacts@0.1.0#list()
 
 --- frame 1  (clicks fed to guest: []) ---
-   heading1 : "Contacts"
-   label   : "No contacts yet"
-   ----
-   heading2 : "New contact"
-   field0  : "Ada"
-   field1  : "+998901112233"
-   button0 : "Save"
+   [tap] #58
+   [page] 60 nodes
+   #1 body
+     #2 div.app {click input}
+       #3 div.content
+         #4 div.view.hidden
+           #5 div.big
+             #6 "Contacts"
+           #7 div.search
+             #8 span.icon
+               #9 "search"
+             #10 input.find [placeholder="Search contacts"] value=""
+           #11 div.count
+           #12 div.list
+           #13 div.empty.none
+             #14 span.icon
+               #15 "person"
+             #16 div
+               #17 "No contacts yet"
+         #18 div.view
+           #19 div.head
+             #20 button.iconbtn [data-k="close"]
+               #21 span.icon
+                 #22 "close"
+             #23 div.title
+               #24 "New contact"
+             #25 button.btn.primary [data-k="save"]
+               #26 "Save"
+           #27 div.form
+             #28 div.group
+               #29 div.row
+                 #30 div.tile [style="background: #2f80ed"]
+                   #31 span.icon.fill
+                     #32 "person"
+                 #33 input.name [placeholder="Name"] value=""
+               #34 div.row
+                 #35 div.tile [style="background: #2db55d"]
+                   #36 span.icon.fill
+                     #37 "call"
+                 #38 input.number [placeholder="Phone number"] value=""
+         #39 div.view.hidden
+           #40 div.head
+             #41 button.iconbtn [data-k="back"]
+               #42 span.icon
+                 #43 "arrow_back"
+           #44 div.who
+           #45 div.acts
+             #46 button.act.go [data-k="call"]
+               #47 div.round
+                 #48 span.icon.fill
+                   #49 "call"
+               #50 span
+                 #51 "Call"
+             #52 button.act.bad [data-k="delete"]
+               #53 div.round
+                 #54 span.icon
+                   #55 "delete"
+               #56 span
+                 #57 "Delete"
+       #58 button.fab.hidden [data-k="new"]
+         #59 span.icon
+           #60 "add"
    [call] arche:phone/contacts@0.1.0#list()
 
---- frame 2  (clicks fed to guest: [0]) ---
-   heading1 : "Contacts"
-   label   : "No contacts yet"
-   ----
-   heading2 : "New contact"
-   field0  : "Ada"
-   field1  : "+998901112233"
-   button0 : "Save"
+--- frame 2  (clicks fed to guest: []) ---
+   [type] #33 = "Ada"
+   [page] 60 nodes
+   #1 body
+     #2 div.app {click input}
+       #3 div.content
+         #4 div.view.hidden
+           #5 div.big
+             #6 "Contacts"
+           #7 div.search
+             #8 span.icon
+               #9 "search"
+             #10 input.find [placeholder="Search contacts"] value=""
+           #11 div.count
+           #12 div.list
+           #13 div.empty.none
+             #14 span.icon
+               #15 "person"
+             #16 div
+               #17 "No contacts yet"
+         #18 div.view
+           #19 div.head
+             #20 button.iconbtn [data-k="close"]
+               #21 span.icon
+                 #22 "close"
+             #23 div.title
+               #24 "New contact"
+             #25 button.btn.primary [data-k="save"]
+               #26 "Save"
+           #27 div.form
+             #28 div.group
+               #29 div.row
+                 #30 div.tile [style="background: #2f80ed"]
+                   #31 span.icon.fill
+                     #32 "person"
+                 #33 input.name [placeholder="Name"] value="Ada"
+               #34 div.row
+                 #35 div.tile [style="background: #2db55d"]
+                   #36 span.icon.fill
+                     #37 "call"
+                 #38 input.number [placeholder="Phone number"] value=""
+         #39 div.view.hidden
+           #40 div.head
+             #41 button.iconbtn [data-k="back"]
+               #42 span.icon
+                 #43 "arrow_back"
+           #44 div.who
+           #45 div.acts
+             #46 button.act.go [data-k="call"]
+               #47 div.round
+                 #48 span.icon.fill
+                   #49 "call"
+               #50 span
+                 #51 "Call"
+             #52 button.act.bad [data-k="delete"]
+               #53 div.round
+                 #54 span.icon
+                   #55 "delete"
+               #56 span
+                 #57 "Delete"
+       #58 button.fab.hidden [data-k="new"]
+         #59 span.icon
+           #60 "add"
    [call] arche:phone/contacts@0.1.0#list()
-   [call] arche:phone/contacts@0.1.0#save("Ada", "+998901112233")
 
 --- frame 3  (clicks fed to guest: []) ---
-   heading1 : "Contacts"
-   label   : "No contacts yet"
-   ----
-   heading2 : "New contact"
-   field0  : ""
-   field1  : ""
-   button0 : "Save"
+   [type] #38 = "+998901112233"
+   [page] 60 nodes
+   #1 body
+     #2 div.app {click input}
+       #3 div.content
+         #4 div.view.hidden
+           #5 div.big
+             #6 "Contacts"
+           #7 div.search
+             #8 span.icon
+               #9 "search"
+             #10 input.find [placeholder="Search contacts"] value=""
+           #11 div.count
+           #12 div.list
+           #13 div.empty.none
+             #14 span.icon
+               #15 "person"
+             #16 div
+               #17 "No contacts yet"
+         #18 div.view
+           #19 div.head
+             #20 button.iconbtn [data-k="close"]
+               #21 span.icon
+                 #22 "close"
+             #23 div.title
+               #24 "New contact"
+             #25 button.btn.primary [data-k="save"]
+               #26 "Save"
+           #27 div.form
+             #28 div.group
+               #29 div.row
+                 #30 div.tile [style="background: #2f80ed"]
+                   #31 span.icon.fill
+                     #32 "person"
+                 #33 input.name [placeholder="Name"] value="Ada"
+               #34 div.row
+                 #35 div.tile [style="background: #2db55d"]
+                   #36 span.icon.fill
+                     #37 "call"
+                 #38 input.number [placeholder="Phone number"] value="+998901112233"
+         #39 div.view.hidden
+           #40 div.head
+             #41 button.iconbtn [data-k="back"]
+               #42 span.icon
+                 #43 "arrow_back"
+           #44 div.who
+           #45 div.acts
+             #46 button.act.go [data-k="call"]
+               #47 div.round
+                 #48 span.icon.fill
+                   #49 "call"
+               #50 span
+                 #51 "Call"
+             #52 button.act.bad [data-k="delete"]
+               #53 div.round
+                 #54 span.icon
+                   #55 "delete"
+               #56 span
+                 #57 "Delete"
+       #58 button.fab.hidden [data-k="new"]
+         #59 span.icon
+           #60 "add"
+   [call] arche:phone/contacts@0.1.0#list()
+
+--- frame 4  (clicks fed to guest: []) ---
+   [tap] #25
+   [page] 60 nodes
+   #1 body
+     #2 div.app {click input}
+       #3 div.content
+         #4 div.view
+           #5 div.big
+             #6 "Contacts"
+           #7 div.search
+             #8 span.icon
+               #9 "search"
+             #10 input.find [placeholder="Search contacts"] value=""
+           #11 div.count
+           #12 div.list
+           #13 div.empty.none
+             #14 span.icon
+               #15 "person"
+             #16 div
+               #17 "No contacts yet"
+         #18 div.view.hidden
+           #19 div.head
+             #20 button.iconbtn [data-k="close"]
+               #21 span.icon
+                 #22 "close"
+             #23 div.title
+               #24 "New contact"
+             #25 button.btn.primary [data-k="save"]
+               #26 "Save"
+           #27 div.form
+             #28 div.group
+               #29 div.row
+                 #30 div.tile [style="background: #2f80ed"]
+                   #31 span.icon.fill
+                     #32 "person"
+                 #33 input.name [placeholder="Name"] value="Ada"
+               #34 div.row
+                 #35 div.tile [style="background: #2db55d"]
+                   #36 span.icon.fill
+                     #37 "call"
+                 #38 input.number [placeholder="Phone number"] value="+998901112233"
+         #39 div.view.hidden
+           #40 div.head
+             #41 button.iconbtn [data-k="back"]
+               #42 span.icon
+                 #43 "arrow_back"
+           #44 div.who
+           #45 div.acts
+             #46 button.act.go [data-k="call"]
+               #47 div.round
+                 #48 span.icon.fill
+                   #49 "call"
+               #50 span
+                 #51 "Call"
+             #52 button.act.bad [data-k="delete"]
+               #53 div.round
+                 #54 span.icon
+                   #55 "delete"
+               #56 span
+                 #57 "Delete"
+       #58 button.fab [data-k="new"]
+         #59 span.icon
+           #60 "add"
+   [call] arche:phone/contacts@0.1.0#save("Ada", "+998901112233")
+   [call] arche:phone/contacts@0.1.0#list()
+
+--- frame 5  (clicks fed to guest: []) ---
+   [tap] #58
+   [page] 60 nodes
+   #1 body
+     #2 div.app {click input}
+       #3 div.content
+         #4 div.view.hidden
+           #5 div.big
+             #6 "Contacts"
+           #7 div.search
+             #8 span.icon
+               #9 "search"
+             #10 input.find [placeholder="Search contacts"] value=""
+           #11 div.count
+           #12 div.list
+           #13 div.empty.none
+             #14 span.icon
+               #15 "person"
+             #16 div
+               #17 "No contacts yet"
+         #18 div.view
+           #19 div.head
+             #20 button.iconbtn [data-k="close"]
+               #21 span.icon
+                 #22 "close"
+             #23 div.title
+               #24 "New contact"
+             #25 button.btn.primary [data-k="save"]
+               #26 "Save"
+           #27 div.form
+             #28 div.group
+               #29 div.row
+                 #30 div.tile [style="background: #2f80ed"]
+                   #31 span.icon.fill
+                     #32 "person"
+                 #33 input.name [placeholder="Name"] value=""
+               #34 div.row
+                 #35 div.tile [style="background: #2db55d"]
+                   #36 span.icon.fill
+                     #37 "call"
+                 #38 input.number [placeholder="Phone number"] value=""
+         #39 div.view.hidden
+           #40 div.head
+             #41 button.iconbtn [data-k="back"]
+               #42 span.icon
+                 #43 "arrow_back"
+           #44 div.who
+           #45 div.acts
+             #46 button.act.go [data-k="call"]
+               #47 div.round
+                 #48 span.icon.fill
+                   #49 "call"
+               #50 span
+                 #51 "Call"
+             #52 button.act.bad [data-k="delete"]
+               #53 div.round
+                 #54 span.icon
+                   #55 "delete"
+               #56 span
+                 #57 "Delete"
+       #58 button.fab.hidden [data-k="new"]
+         #59 span.icon
+           #60 "add"
+   [call] arche:phone/contacts@0.1.0#list()
+
+--- frame 6  (clicks fed to guest: []) ---
+   [tap] #20
+   [page] 60 nodes
+   #1 body
+     #2 div.app {click input}
+       #3 div.content
+         #4 div.view
+           #5 div.big
+             #6 "Contacts"
+           #7 div.search
+             #8 span.icon
+               #9 "search"
+             #10 input.find [placeholder="Search contacts"] value=""
+           #11 div.count
+           #12 div.list
+           #13 div.empty.none
+             #14 span.icon
+               #15 "person"
+             #16 div
+               #17 "No contacts yet"
+         #18 div.view.hidden
+           #19 div.head
+             #20 button.iconbtn [data-k="close"]
+               #21 span.icon
+                 #22 "close"
+             #23 div.title
+               #24 "New contact"
+             #25 button.btn.primary [data-k="save"]
+               #26 "Save"
+           #27 div.form
+             #28 div.group
+               #29 div.row
+                 #30 div.tile [style="background: #2f80ed"]
+                   #31 span.icon.fill
+                     #32 "person"
+                 #33 input.name [placeholder="Name"] value=""
+               #34 div.row
+                 #35 div.tile [style="background: #2db55d"]
+                   #36 span.icon.fill
+                     #37 "call"
+                 #38 input.number [placeholder="Phone number"] value=""
+         #39 div.view.hidden
+           #40 div.head
+             #41 button.iconbtn [data-k="back"]
+               #42 span.icon
+                 #43 "arrow_back"
+           #44 div.who
+           #45 div.acts
+             #46 button.act.go [data-k="call"]
+               #47 div.round
+                 #48 span.icon.fill
+                   #49 "call"
+               #50 span
+                 #51 "Call"
+             #52 button.act.bad [data-k="delete"]
+               #53 div.round
+                 #54 span.icon
+                   #55 "delete"
+               #56 span
+                 #57 "Delete"
+       #58 button.fab [data-k="new"]
+         #59 span.icon
+           #60 "add"
    [call] arche:phone/contacts@0.1.0#list()

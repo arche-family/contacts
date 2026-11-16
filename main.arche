@@ -1,68 +1,305 @@
-/// Contacts, the Arche phone's (docs/sprints.md T7 in arche-os): the
+/// Contacts, the Arche phone's (docs/sprints.md T7, T10 in arche-os): the
 /// phone's contacts, names for numbers, which Phone and Messages and the
-/// call screen say too. Each in the list, its name over its number, opens
-/// to Call and Delete; a new one is its name and number, and Save, which
-/// empties the form again. An app of the phone's world: it may read and
+/// call screen say too. The list, by their names' first letters, each its
+/// picture (the name's first letter on its color), its name over its
+/// number; a search over it finds them by name or number. The round + adds
+/// one: its name and number, and Save. One opened is its picture large,
+/// its name and number, Call and Delete. Its look is the phone's app kit
+/// (arche-lang's appkit). An app of the phone's world: it may read and
 /// change the contacts (contacts) and make calls (telephony).
 import alloc;
+import appkit;
 import contacts;
+import dom;
 import host_api;
 import std;
 import telephony;
 
+const SHEET: str = ".who { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 20px 24px; } .who .avatar { width: 96px; height: 96px; border-radius: 48px; font-size: 40px; } .who .name { font-size: 28px; padding-top: 10px; } .who .num { font-size: 15px; color: var(--kit-muted); } .acts { display: flex; flex-direction: row; justify-content: center; gap: 36px; padding: 0 0 22px; } .act { display: flex; flex-direction: column; align-items: center; gap: 6px; border: 0; padding: 0; background: transparent; color: var(--kit-text); font-size: 13px; font-weight: 500; } .act .round { width: 56px; height: 56px; border-radius: 28px; display: flex; align-items: center; justify-content: center; background: var(--kit-card); } .act.go .round { background: var(--kit-good); color: #ffffff; } .act.bad { color: var(--kit-danger); } .count { font-size: 14px; color: var(--kit-muted); padding: 0 20px 12px; } .form { padding-top: 8px; } .save { margin: 8px 14px; } .hidden { display: none; }";
+
+const LIST: u32 = 0;
+const NEW: u32 = 1;
+const ONE: u32 = 2;
+
 type Contacts = struct {
-    /// The number of the contact opened; empty for the list.
+    view: u32,
+    /// The number of the contact opened.
     open: alloc.String,
+    /// The new one's name and number as typed, and the search's words.
     name: alloc.String,
     number: alloc.String,
+    find: alloc.String,
+    /// The page's nodes: the three views, the list and its count, what
+    /// the list says when empty, the + and the opened one's parts, the
+    /// form's fields.
+    views: [3]u32,
+    list: u32,
+    count: u32,
+    empty: u32,
+    fab: u32,
+    who: u32,
+    name_field: u32,
+    number_field: u32,
+    search: u32,
+    /// What the list was made from, to make it again when it changes.
+    seen: i64,
 }
 
 fn init(host: &mut std.Host, a: alloc.Allocator) -> Contacts {
-    return Contacts { open: alloc.String.init(a), name: alloc.String.init(a), number: alloc.String.init(a) };
+    let kit = appkit.css(a);
+    _ = dom.add_stylesheet(host, css: kit.view());
+    _ = dom.add_stylesheet(host, css: SHEET);
+    let markup = "<div class='app'><div class='content'><div class='view'><div class='big'>Contacts</div><div class='search'><span class='icon'>search</span><input class='find' placeholder='Search contacts'></div><div class='count'></div><div class='list'></div><div class='empty none'><span class='icon'>person</span><div>No contacts yet</div></div></div><div class='view hidden'><div class='head'><button class='iconbtn' data-k='close'><span class='icon'>close</span></button><div class='title'>New contact</div><button class='btn primary' data-k='save'>Save</button></div><div class='form'><div class='group'><div class='row'><div class='tile' style='background: #2f80ed'><span class='icon fill'>person</span></div><input class='name' placeholder='Name'></div><div class='row'><div class='tile' style='background: #2db55d'><span class='icon fill'>call</span></div><input class='number' placeholder='Phone number'></div></div></div></div><div class='view hidden'><div class='head'><button class='iconbtn' data-k='back'><span class='icon'>arrow_back</span></button></div><div class='who'></div><div class='acts'><button class='act go' data-k='call'><div class='round'><span class='icon fill'>call</span></div><span>Call</span></button><button class='act bad' data-k='delete'><div class='round'><span class='icon'>delete</span></div><span>Delete</span></button></div></div></div><button class='fab' data-k='new'><span class='icon'>add</span></button></div>";
+    var why = alloc.String.init(a);
+    if not dom.set_markup(host, item: dom.root(host), markup: markup, why: &mut why, a: a) {
+        host_api.log(host, msg: why.view());
+    }
+    let app = first(host, selector: ".app", a: a);
+    dom.listen(host, item: app, kind: "click");
+    dom.listen(host, item: app, kind: "input");
+    let views = dom.query_all(host, scope: dom.root(host), selector: ".view", a: a);
+    var state = Contacts {
+        view: LIST,
+        open: alloc.String.init(a),
+        name: alloc.String.init(a),
+        number: alloc.String.init(a),
+        find: alloc.String.init(a),
+        views: [views.items()[0], views.items()[1], views.items()[2]],
+        list: first(host, selector: ".list", a: a),
+        count: first(host, selector: ".count", a: a),
+        empty: first(host, selector: ".none", a: a),
+        fab: first(host, selector: ".fab", a: a),
+        who: first(host, selector: ".who", a: a),
+        name_field: first(host, selector: ".name", a: a),
+        number_field: first(host, selector: ".number", a: a),
+        search: first(host, selector: ".find", a: a),
+        seen: -1,
+    };
+    refresh(&mut state, host: host, a: a);
+    return state;
 }
 
 fn update(state: &mut Contacts, host: &mut std.Host, a: alloc.Allocator) {
-    let all = contacts.list(host, a: a);
-    if state.open.len() > 0 {
-        for c in all.items() {
-            if c.number.view().eq(state.open.view()) {
-                host_api.ui_heading(host, text: c.name.view(), level: 1);
-                host_api.ui_label(host, text: c.number.view());
-                host_api.ui_begin(host, kind: "row");
-                if host_api.ui_button(host, text: "Call") {
-                    telephony.dial(host, number: c.number.view());
-                }
-                if host_api.ui_button(host, text: "Delete") {
-                    contacts.remove(host, number: c.number.view());
-                    state.open = alloc.String.init(a);
-                }
-                if host_api.ui_button(host, text: "Back") {
-                    state.open = alloc.String.init(a);
-                }
-                host_api.ui_end(host);
-                return;
+    for e in dom.events(host, a: a).items() {
+        if e.kind.view().eq("click") {
+            match key_of(host, n: e.target, a: a) {
+                some(k) => { press(state, host: host, k: k.view(), a: a); }
+                none => { }
+            }
+        } else if e.kind.view().eq("input") {
+            if e.target == state.name_field {
+                state.name = alloc.String.from(e.value.view(), a);
+            } else if e.target == state.number_field {
+                state.number = alloc.String.from(e.value.view(), a);
+            } else if e.target == state.search {
+                state.find = alloc.String.from(e.value.view(), a);
+                state.seen = -1;
             }
         }
-        // Gone, as one deleted is: the list again.
-        state.open = alloc.String.init(a);
     }
-    host_api.ui_heading(host, text: "Contacts", level: 1);
-    if all.len() == 0 {
-        host_api.ui_label(host, text: "No contacts yet");
-    }
-    for c in all.items() {
-        if host_api.ui_tile(host, title: c.name.view(), subtitle: c.number.view()) {
-            state.open = alloc.String.from(c.number.view(), a);
-        }
-    }
-    host_api.ui_separator(host);
-    host_api.ui_heading(host, text: "New contact", level: 2);
-    state.name = host_api.ui_text_edit(host, text: state.name.view(), a: a);
-    state.number = host_api.ui_text_edit(host, text: state.number.view(), a: a);
-    if host_api.ui_button(host, text: "Save") and state.name.len() > 0 and state.number.len() > 0 {
-        contacts.save(host, name: state.name.view(), number: state.number.view());
-        // Saved, the form empty again for the next.
+    refresh(state, host: host, a: a);
+}
+
+fn press(state: &mut Contacts, host: &mut std.Host, k: str, a: alloc.Allocator) {
+    if k.eq("new") {
         state.name = alloc.String.init(a);
         state.number = alloc.String.init(a);
+        dom.set_attribute(host, item: state.name_field, name: "value", value_: "");
+        dom.set_attribute(host, item: state.number_field, name: "value", value_: "");
+        show(state, host: host, view: NEW);
+    } else if k.eq("close") or k.eq("back") {
+        show(state, host: host, view: LIST);
+    } else if k.eq("save") {
+        if state.name.len() > 0 and state.number.len() > 0 {
+            contacts.save(host, name: state.name.view(), number: state.number.view());
+            state.seen = -1;
+            show(state, host: host, view: LIST);
+        }
+    } else if k.starts_with("open:") {
+        state.open = alloc.String.from(k[5..k.len()], a);
+        state.seen = -1;
+        show(state, host: host, view: ONE);
+    } else if k.eq("call") {
+        telephony.dial(host, number: state.open.view());
+    } else if k.eq("delete") {
+        contacts.remove(host, number: state.open.view());
+        state.seen = -1;
+        show(state, host: host, view: LIST);
     }
+}
+
+fn show(state: &mut Contacts, host: &mut std.Host, view: u32) {
+    state.view = view;
+    var k: usize = 0;
+    while k < 3 : (k += 1) {
+        dom.toggle_class(host, item: state.views[k], name: "hidden", on: k as u32 != view);
+    }
+    dom.toggle_class(host, item: state.fab, name: "hidden", on: view != LIST);
+}
+
+/// c lowered, ASCII's letters only.
+fn lower(c: u8) -> u8 {
+    if c >= 'A' and c <= 'Z' {
+        return c + 32;
+    }
+    return c;
+}
+
+/// Whether words is in text, ASCII's letters' case aside.
+fn has(text: str, words: str) -> bool {
+    let t = text.bytes();
+    let w = words.bytes();
+    if w.len() == 0 {
+        return true;
+    }
+    var i: usize = 0;
+    while i + w.len() <= t.len() : (i += 1) {
+        var j: usize = 0;
+        while j < w.len() and lower(t[i + j]) == lower(w[j]) : (j += 1) {
+        }
+        if j == w.len() {
+            return true;
+        }
+    }
+    return false;
+}
+
+/// Whether x comes before y by name, ASCII's letters' case aside.
+fn before(x: str, y: str) -> bool {
+    let p = x.bytes();
+    let q = y.bytes();
+    var i: usize = 0;
+    while i < p.len() and i < q.len() : (i += 1) {
+        if lower(p[i]) != lower(q[i]) {
+            return lower(p[i]) < lower(q[i]);
+        }
+    }
+    return p.len() < q.len();
+}
+
+/// The list, and the one opened, made again when the contacts or the
+/// search changed.
+fn refresh(state: &mut Contacts, host: &mut std.Host, a: alloc.Allocator) {
+    let all = contacts.list(host, a: a);
+    var mark = all.len() as i64;
+    for c in all.items() {
+        mark = mark * 31 + c.name.len() as i64 * 7 + c.number.len() as i64;
+    }
+    if mark == state.seen {
+        return;
+    }
+    state.seen = mark;
+    // By name, then under each first letter its own label.
+    var order = alloc.List(usize).init(a);
+    var i: usize = 0;
+    while i < all.len() : (i += 1) {
+        let c = &all.items()[i];
+        if not has(text: c.name.view(), words: state.find.view()) and not has(text: c.number.view(), words: state.find.view()) {
+            continue;
+        }
+        var at = order.len();
+        while at > 0 and before(x: c.name.view(), y: all.items()[order.items()[at - 1]].name.view()) : (at -= 1) {
+        }
+        order.push(0);
+        var k = order.len() - 1;
+        while k > at : (k -= 1) {
+            let moved = order.items()[k - 1];
+            order.items_mut()[k] = moved;
+        }
+        order.items_mut()[at] = i;
+    }
+    var out = alloc.String.init(a);
+    var letter = alloc.String.init(a);
+    var open_group = false;
+    for n in order.items() {
+        let c = &all.items()[n.*];
+        let first_letter = appkit.initial(c.name.view(), a: a);
+        if not first_letter.view().eq(letter.view()) {
+            if open_group {
+                out.push_str("</div>");
+            }
+            letter = first_letter;
+            out.push_str("<div class='label'>");
+            appkit.escaped(&mut out, s: letter.view());
+            out.push_str("</div><div class='group'>");
+            open_group = true;
+        }
+        out.push_str("<button class='row' data-k='open:");
+        appkit.escaped(&mut out, s: c.number.view());
+        out.push_str("'><div class='avatar' style='background: ");
+        out.push_str(appkit.avatar_color(c.name.view()));
+        out.push_str("'>");
+        appkit.escaped(&mut out, s: letter.view());
+        out.push_str("</div><div class='lines'><div class='primary'>");
+        appkit.escaped(&mut out, s: c.name.view());
+        out.push_str("</div><div class='secondary'>");
+        appkit.escaped(&mut out, s: c.number.view());
+        out.push_str("</div></div><span class='icon chev'>chevron_right</span></button>");
+    }
+    if open_group {
+        out.push_str("</div>");
+    }
+    var why = alloc.String.init(a);
+    if not dom.set_markup(host, item: state.list, markup: out.view(), why: &mut why, a: a) {
+        host_api.log(host, msg: why.view());
+    }
+    var said = alloc.String.init(a);
+    if all.len() > 0 {
+        said.push_u64(all.len() as u64);
+        if all.len() == 1 {
+            said.push_str(" contact");
+        } else {
+            said.push_str(" contacts");
+        }
+    }
+    dom.set_text(host, item: state.count, text: said.view());
+    dom.toggle_class(host, item: state.empty, name: "hidden", on: all.len() > 0);
+    // The one opened, if it is still there.
+    var who = alloc.String.init(a);
+    var found = false;
+    for c in all.items() {
+        if c.number.view().eq(state.open.view()) {
+            found = true;
+            who.push_str("<div class='avatar' style='background: ");
+            who.push_str(appkit.avatar_color(c.name.view()));
+            who.push_str("'>");
+            let l = appkit.initial(c.name.view(), a: a);
+            appkit.escaped(&mut who, s: l.view());
+            who.push_str("</div><div class='name'>");
+            appkit.escaped(&mut who, s: c.name.view());
+            who.push_str("</div><div class='num'>");
+            appkit.escaped(&mut who, s: c.number.view());
+            who.push_str("</div>");
+        }
+    }
+    if not dom.set_markup(host, item: state.who, markup: who.view(), why: &mut why, a: a) {
+        host_api.log(host, msg: why.view());
+    }
+    if state.view == ONE and not found {
+        // Gone, as one deleted is: the list again.
+        show(state, host: host, view: LIST);
+    }
+}
+
+/// The first node under the page that selector finds; 0 for none.
+fn first(host: &mut std.Host, selector: str, a: alloc.Allocator) -> u32 {
+    let found = dom.query_all(host, scope: dom.root(host), selector: selector, a: a);
+    if found.len() == 0 {
+        return 0;
+    }
+    return found.items()[0];
+}
+
+/// The key a click on n is: its data-k, or its nearest ancestor's.
+fn key_of(host: &mut std.Host, n: u32, a: alloc.Allocator) -> ?alloc.String {
+    var at = n;
+    var hops: u32 = 0;
+    while at != 0 and hops < 8 : (hops += 1) {
+        match dom.get_attribute(host, item: at, name: "data-k", a: a) {
+            some(k) => { return k; }
+            none => { }
+        }
+        at = dom.parent(host, item: at) orelse 0;
+    }
+    return none;
 }
