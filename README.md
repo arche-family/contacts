@@ -5,8 +5,10 @@ The Arche phone's contacts, written in [Arche](https://github.com/arche-family/a
 It works like Android's:
 
 - The phone's contacts, a name for each number, in order of their names. The phone keeps them, not the app: Phone and Messages show the names too, and so do the call screen and the notifications of messages that come.
-- A contact opens to Call, which the phone's call screen takes from there, and Delete.
-- A new contact is its name and number, and Save, which empties the form for the next; a number saved again is renamed.
+- A contact opens as HyperOS's does: its picture and name, its number on a card with Call and Message by it (Message opens Messages to write to it, `messages.component.wasm?to=<number>`, the phone's intents), the calls with it (`telephony.history`), and Edit and Delete at the top; Delete asks first.
+- A new contact, or one edited, is its name and its number, and Save (✓). The number's field asks for the phone's dial pad (`type="tel"`); only a phone number is saved (3 to 15 digits, a + before them, spaces, hyphens and brackets dropped), and what is no number is said under it. A number changed in an edit takes the name from the old one.
+
+It shows in the phone's language, English, Uzbek or Russian, as the phone's `locale` says (`en-US`, `uz-UZ`, `ru-RU`): its words, the count of contacts with Russian's plural forms, and the calls' dates and lengths; it makes its page again when the language changes.
 
 `manifest` says what it may do: read and change the contacts (`contacts`) and make calls (`telephony`).
 

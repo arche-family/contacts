@@ -1,6 +1,10 @@
 name: contacts
 version: 1
 title: Contacts
-about: Names for numbers, which the phone says too
+about: The people you call and message
+title.uz: Kontaktlar
+about.uz: Qoʻngʻiroq qiladigan va yozadigan odamlaringiz
+title.ru: Контакты
+about.ru: Люди, которым вы звоните и пишете
 publisher: arche
 needs: contacts telephony

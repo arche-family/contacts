@@ -1,12 +1,18 @@
-/// Contacts, the Arche phone's (docs/sprints.md T7, T10 in arche-os): the
-/// phone's contacts, names for numbers, which Phone and Messages and the
-/// call screen say too. The list, by their names' first letters, each its
-/// picture (the name's first letter on its color), its name over its
+/// Contacts, the Arche phone's (docs/sprints.md T7, T10, T12 in arche-os):
+/// the phone's contacts, names for numbers, which Phone and Messages and
+/// the call screen say too. The list, by their names' first letters, each
+/// its picture (the name's first letter on its color), its name over its
 /// number; a search over it finds them by name or number. The round + adds
-/// one: its name and number, and Save. One opened is its picture large,
-/// its name and number, Call and Delete. Its look is the phone's app kit
-/// (arche-lang's appkit). An app of the phone's world: it may read and
-/// change the contacts (contacts) and make calls (telephony).
+/// one: its name and its number, typed on the phone's dial pad
+/// (type="tel"), which must be a phone number to be saved. One opened is
+/// as HyperOS's: its picture large and its name, its number on a card
+/// with Call and Message by it, the calls with it, and Edit and Delete
+/// at the top, Delete asked about first. Message opens Messages to write
+/// to it. Its look is the phone's app kit (arche-lang's appkit). It speaks
+/// the phone's language: English, Uzbek or Russian (host_api's locale), and
+/// makes its page again when that changes. An app of the phone's world: it
+/// may read and change the contacts (contacts) and make calls and know the
+/// calls the phone had (telephony).
 import alloc;
 import appkit;
 import contacts;
@@ -15,108 +21,417 @@ import host_api;
 import std;
 import telephony;
 
-const SHEET: str = ".who { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 20px 24px; } .who .avatar { width: 96px; height: 96px; border-radius: 48px; font-size: 40px; } .who .name { font-size: 28px; padding-top: 10px; } .who .num { font-size: 15px; color: var(--kit-muted); } .acts { display: flex; flex-direction: row; justify-content: center; gap: 36px; padding: 0 0 22px; } .act { display: flex; flex-direction: column; align-items: center; gap: 6px; border: 0; padding: 0; background: transparent; color: var(--kit-text); font-size: 13px; font-weight: 500; } .act .round { width: 56px; height: 56px; border-radius: 28px; display: flex; align-items: center; justify-content: center; background: var(--kit-card); } .act.go .round { background: var(--kit-good); color: #ffffff; } .act.bad { color: var(--kit-danger); } .count { font-size: 14px; color: var(--kit-muted); padding: 0 20px 12px; } .form { padding-top: 8px; } .save { margin: 8px 14px; } .hidden { display: none; }";
+const SHEET: str = ".who { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 20px 20px; } .who .avatar { width: 96px; height: 96px; border-radius: 48px; font-size: 40px; } .who .name { font-size: 28px; padding-top: 10px; text-align: center; } .num .row { gap: 10px; } .num .primary { font-size: 18px; } .round { width: 44px; height: 44px; border-radius: 22px; border: 0; padding: 0; display: flex; align-items: center; justify-content: center; background: var(--kit-good); color: #ffffff; flex-shrink: 0; } .round .icon { font-size: 22px; } .calls .row .icon { color: var(--kit-muted); font-size: 20px; } .calls .row.missed .icon, .calls .row.missed .primary { color: var(--kit-danger); } .when { font-size: 13px; color: var(--kit-muted); flex-shrink: 0; } .nocalls { font-size: 14px; color: var(--kit-muted); padding: 16px; } .count { font-size: 14px; color: var(--kit-muted); padding: 0 24px 12px; } .form { padding-top: 8px; } .error { font-size: 13px; color: var(--kit-danger); padding: 0 32px 8px; } .head .title { flex-grow: 1; text-align: center; } .ok.off { opacity: 0.35; } .tools { display: flex; flex-direction: row; } .gap { flex-grow: 1; } .scrim { position: fixed; left: 0; right: 0; top: 0; bottom: 0; background: rgba(0, 0, 0, 0.4); display: flex; flex-direction: column; justify-content: flex-end; } .ask { margin: 0 12px 12px; padding: 24px 20px 16px; border-radius: 24px; background: var(--kit-card); display: flex; flex-direction: column; gap: 8px; } .ask .q { font-size: 18px; font-weight: 500; color: var(--kit-text); text-align: center; } .ask .sub { font-size: 14px; color: var(--kit-muted); text-align: center; padding-bottom: 12px; } .ask .two { display: flex; flex-direction: row; gap: 12px; } .ask .btn { flex-grow: 1; } .btn.bad { background: var(--kit-danger); color: #ffffff; } .hidden { display: none; }";
 
 const LIST: u32 = 0;
-const NEW: u32 = 1;
+const EDIT: u32 = 1;
 const ONE: u32 = 2;
+
+/// The languages it speaks.
+const EN: u32 = 0;
+const UZ: u32 = 1;
+const RU: u32 = 2;
+
+/// The most calls the opened one's card shows.
+const MOST_CALLS: usize = 5;
 
 type Contacts = struct {
     view: u32,
-    /// The number of the contact opened.
+    /// The number of the contact opened, and of the one being edited (empty
+    /// for a new one).
     open: alloc.String,
-    /// The new one's name and number as typed, and the search's words.
+    editing: alloc.String,
+    /// The form's name and number as typed, and the search's words.
     name: alloc.String,
     number: alloc.String,
     find: alloc.String,
+    /// Whether the number was left once (its error said from then on), and
+    /// whether Delete is being asked about.
+    touched: bool,
+    asking: bool,
     /// The page's nodes: the three views, the list and its count, what
     /// the list says when empty, the + and the opened one's parts, the
-    /// form's fields.
+    /// form's fields, its title, Save and the number's error, the sheet
+    /// asking about Delete.
     views: [3]u32,
     list: u32,
     count: u32,
     empty: u32,
     fab: u32,
     who: u32,
+    num: u32,
+    calls: u32,
     name_field: u32,
     number_field: u32,
+    form_title: u32,
+    ok: u32,
+    warn: u32,
     search: u32,
-    /// What the list was made from, to make it again when it changes.
+    ask: u32,
+    /// What the pages were made from, to make them again when it changes.
     seen: i64,
+    /// The phone's language (EN, UZ, RU), its locale as the phone said it,
+    /// and the stylesheets' numbers, to make the page again in another.
+    lang: u32,
+    locale: alloc.String,
+    styles: [2]u32,
 }
 
 fn init(host: &mut std.Host, a: alloc.Allocator) -> Contacts {
     let kit = appkit.css(a);
-    _ = dom.add_stylesheet(host, css: kit.view());
-    _ = dom.add_stylesheet(host, css: SHEET);
-    let markup = "<div class='app'><div class='content'><div class='view'><div class='big'>Contacts</div><div class='search'><span class='icon'>search</span><input class='find' placeholder='Search contacts'></div><div class='count'></div><div class='list'></div><div class='empty none'><span class='icon'>person</span><div>No contacts yet</div></div></div><div class='view hidden'><div class='head'><button class='iconbtn' data-k='close'><span class='icon'>close</span></button><div class='title'>New contact</div><button class='btn primary' data-k='save'>Save</button></div><div class='form'><div class='group'><div class='row'><div class='tile' style='background: #2f80ed'><span class='icon fill'>person</span></div><input class='name' placeholder='Name'></div><div class='row'><div class='tile' style='background: #2db55d'><span class='icon fill'>call</span></div><input class='number' placeholder='Phone number'></div></div></div></div><div class='view hidden'><div class='head'><button class='iconbtn' data-k='back'><span class='icon'>arrow_back</span></button></div><div class='who'></div><div class='acts'><button class='act go' data-k='call'><div class='round'><span class='icon fill'>call</span></div><span>Call</span></button><button class='act bad' data-k='delete'><div class='round'><span class='icon'>delete</span></div><span>Delete</span></button></div></div></div><button class='fab' data-k='new'><span class='icon'>add</span></button></div>";
+    let kit_sheet = dom.add_stylesheet(host, css: kit.view());
+    let own_sheet = dom.add_stylesheet(host, css: SHEET);
+    let locale = host_api.locale(host, a: a);
+    let lang = lang_of(locale.view());
+    var markup = alloc.String.from("<div class='app'><div class='content'><div class='view'><div class='appbar'><div class='big'>", a);
+    markup.push_str(say(lang, "Contacts"));
+    markup.push_str("</div></div><div class='search'><span class='icon'>search</span><input class='find' placeholder='");
+    markup.push_str(say(lang, "Search contacts"));
+    markup.push_str("'></div><div class='count'></div><div class='list'></div><div class='empty none'><span class='icon'>person</span><div>");
+    markup.push_str(say(lang, "No contacts yet"));
+    markup.push_str("</div></div></div><div class='view hidden'><div class='head'><button class='iconbtn' data-k='close' aria-label='");
+    markup.push_str(say(lang, "Cancel"));
+    markup.push_str("'><span class='icon'>close</span></button><div class='title formtitle'>");
+    markup.push_str(say(lang, "New contact"));
+    markup.push_str("</div><button class='iconbtn ok' data-k='save' aria-label='");
+    markup.push_str(say(lang, "Save"));
+    markup.push_str("'><span class='icon'>check</span></button></div><div class='form'><div class='group'><div class='row'><div class='tile' style='background: #2f80ed'><span class='icon fill'>person</span></div><input class='name' placeholder='");
+    markup.push_str(say(lang, "Name"));
+    markup.push_str("' autocomplete='name'></div><div class='row'><div class='tile' style='background: #2db55d'><span class='icon fill'>call</span></div><input class='number' type='tel' inputmode='tel' placeholder='");
+    markup.push_str(say(lang, "Phone number"));
+    markup.push_str("'></div></div><div class='error hidden'>");
+    markup.push_str(say(lang, "Enter a phone number: digits, and + before them"));
+    markup.push_str("</div></div></div><div class='view hidden'><div class='head'><button class='iconbtn' data-k='back' aria-label='");
+    markup.push_str(say(lang, "Back"));
+    markup.push_str("'><span class='icon'>arrow_back</span></button><div class='gap'></div><button class='iconbtn' data-k='edit' aria-label='");
+    markup.push_str(say(lang, "Edit"));
+    markup.push_str("'><span class='icon'>edit</span></button><button class='iconbtn' data-k='delete' aria-label='");
+    markup.push_str(say(lang, "Delete"));
+    markup.push_str("'><span class='icon'>delete</span></button></div><div class='who'></div><div class='group num'></div><div class='label'>");
+    markup.push_str(say(lang, "Call history"));
+    markup.push_str("</div><div class='group calls'></div></div></div><button class='fab' data-k='new' aria-label='");
+    markup.push_str(say(lang, "New contact"));
+    markup.push_str("'><span class='icon'>add</span></button><div class='scrim hidden'><div class='ask'><div class='q'>");
+    markup.push_str(say(lang, "Delete this contact?"));
+    markup.push_str("</div><div class='sub'>");
+    markup.push_str(say(lang, "Its name goes; the calls and messages with its number stay."));
+    markup.push_str("</div><div class='two'><button class='btn' data-k='keep'>");
+    markup.push_str(say(lang, "Cancel"));
+    markup.push_str("</button><button class='btn bad' data-k='gone'>");
+    markup.push_str(say(lang, "Delete"));
+    markup.push_str("</button></div></div></div></div>");
     var why = alloc.String.init(a);
-    if not dom.set_markup(host, item: dom.root(host), markup: markup, why: &mut why, a: a) {
+    if not dom.set_markup(host, item: dom.root(host), markup: markup.view(), why: &mut why, a: a) {
         host_api.log(host, msg: why.view());
     }
     let app = first(host, selector: ".app", a: a);
     dom.listen(host, item: app, kind: "click");
     dom.listen(host, item: dom.root(host), kind: "back");
     dom.listen(host, item: app, kind: "input");
+    dom.listen(host, item: app, kind: "change");
     let views = dom.query_all(host, scope: dom.root(host), selector: ".view", a: a);
     var state = Contacts {
         view: LIST,
         open: alloc.String.init(a),
+        editing: alloc.String.init(a),
         name: alloc.String.init(a),
         number: alloc.String.init(a),
         find: alloc.String.init(a),
+        touched: false,
+        asking: false,
         views: [views.items()[0], views.items()[1], views.items()[2]],
         list: first(host, selector: ".list", a: a),
         count: first(host, selector: ".count", a: a),
         empty: first(host, selector: ".none", a: a),
         fab: first(host, selector: ".fab", a: a),
         who: first(host, selector: ".who", a: a),
+        num: first(host, selector: ".num", a: a),
+        calls: first(host, selector: ".calls", a: a),
         name_field: first(host, selector: ".name", a: a),
         number_field: first(host, selector: ".number", a: a),
+        form_title: first(host, selector: ".formtitle", a: a),
+        ok: first(host, selector: ".ok", a: a),
+        warn: first(host, selector: ".error", a: a),
         search: first(host, selector: ".find", a: a),
+        ask: first(host, selector: ".scrim", a: a),
         seen: -1,
+        lang: lang,
+        locale: locale,
+        styles: [kit_sheet, own_sheet],
     };
     refresh(&mut state, host: host, a: a);
     return state;
 }
 
+/// The language a locale (BCP 47, "uz-UZ") names: Uzbek, Russian, else
+/// English.
+fn lang_of(locale: str) -> u32 {
+    if locale.starts_with("uz") {
+        return UZ;
+    }
+    if locale.starts_with("ru") {
+        return RU;
+    }
+    return EN;
+}
+
+/// s, English, in lang: itself in English, and for what this does not know.
+fn say(lang: u32, s: str) -> str {
+    if s.eq("Contacts") {
+        if lang == UZ { return "Kontaktlar"; }
+        if lang == RU { return "Контакты"; }
+    }
+    if s.eq("Search contacts") {
+        if lang == UZ { return "Kontaktlarni qidirish"; }
+        if lang == RU { return "Поиск контактов"; }
+    }
+    if s.eq("No contacts yet") {
+        if lang == UZ { return "Hali kontaktlar yoʻq"; }
+        if lang == RU { return "Контактов пока нет"; }
+    }
+    if s.eq("Cancel") {
+        if lang == UZ { return "Bekor qilish"; }
+        if lang == RU { return "Отмена"; }
+    }
+    if s.eq("New contact") {
+        if lang == UZ { return "Yangi kontakt"; }
+        if lang == RU { return "Новый контакт"; }
+    }
+    if s.eq("Edit contact") {
+        if lang == UZ { return "Kontaktni tahrirlash"; }
+        if lang == RU { return "Изменить контакт"; }
+    }
+    if s.eq("Save") {
+        if lang == UZ { return "Saqlash"; }
+        if lang == RU { return "Сохранить"; }
+    }
+    if s.eq("Name") {
+        if lang == UZ { return "Ism"; }
+        if lang == RU { return "Имя"; }
+    }
+    if s.eq("Phone number") {
+        if lang == UZ { return "Telefon raqami"; }
+        if lang == RU { return "Номер телефона"; }
+    }
+    if s.eq("Enter a phone number: digits, and + before them") {
+        if lang == UZ { return "Telefon raqamini kiriting: raqamlar va oldida +"; }
+        if lang == RU { return "Введите номер телефона: цифры и + перед ними"; }
+    }
+    if s.eq("Back") {
+        if lang == UZ { return "Orqaga"; }
+        if lang == RU { return "Назад"; }
+    }
+    if s.eq("Edit") {
+        if lang == UZ { return "Tahrirlash"; }
+        if lang == RU { return "Изменить"; }
+    }
+    if s.eq("Delete") {
+        if lang == UZ { return "Oʻchirish"; }
+        if lang == RU { return "Удалить"; }
+    }
+    if s.eq("Call history") {
+        if lang == UZ { return "Qoʻngʻiroqlar tarixi"; }
+        if lang == RU { return "История вызовов"; }
+    }
+    if s.eq("Delete this contact?") {
+        if lang == UZ { return "Kontakt oʻchirilsinmi?"; }
+        if lang == RU { return "Удалить этот контакт?"; }
+    }
+    if s.eq("Its name goes; the calls and messages with its number stay.") {
+        if lang == UZ { return "Ism oʻchadi; shu raqam bilan qoʻngʻiroqlar va xabarlar qoladi."; }
+        if lang == RU { return "Имя удалится; вызовы и сообщения с этим номером останутся."; }
+    }
+    if s.eq("Mobile") {
+        if lang == UZ { return "Mobil"; }
+        if lang == RU { return "Мобильный"; }
+    }
+    if s.eq("Call") {
+        if lang == UZ { return "Qoʻngʻiroq"; }
+        if lang == RU { return "Вызов"; }
+    }
+    if s.eq("Message") {
+        if lang == UZ { return "Xabar"; }
+        if lang == RU { return "Сообщение"; }
+    }
+    if s.eq("Outgoing") {
+        if lang == UZ { return "Chiquvchi"; }
+        if lang == RU { return "Исходящий"; }
+    }
+    if s.eq("Incoming") {
+        if lang == UZ { return "Kiruvchi"; }
+        if lang == RU { return "Входящий"; }
+    }
+    if s.eq("Missed") {
+        if lang == UZ { return "Javobsiz"; }
+        if lang == RU { return "Пропущенный"; }
+    }
+    if s.eq("No calls yet") {
+        if lang == UZ { return "Hali qoʻngʻiroqlar yoʻq"; }
+        if lang == RU { return "Вызовов пока нет"; }
+    }
+    return s;
+}
+
+/// Which of Russian's three forms a noun takes after n: 0 as after 1 (21,
+/// 101), 1 as after 2 to 4 (22, 104), 2 as after 5 to 20 (11, 25).
+fn ru_form(n: u64) -> u32 {
+    if n % 10 == 1 and n % 100 != 11 {
+        return 0;
+    }
+    if n % 10 >= 2 and n % 10 <= 4 and (n % 100 < 12 or n % 100 > 14) {
+        return 1;
+    }
+    return 2;
+}
+
+/// The page made again, in the phone's language now: its stylesheets and
+/// nodes away, then init's; the list shown.
+fn again(state: &mut Contacts, host: &mut std.Host, a: alloc.Allocator) {
+    dom.remove_stylesheet(host, sheet: state.styles[0]);
+    dom.remove_stylesheet(host, sheet: state.styles[1]);
+    dom.unlisten(host, item: dom.root(host), kind: "back");
+    for old in dom.children(host, item: dom.root(host), a: a).items() {
+        dom.release(host, item: old.*);
+    }
+    state.* = init(host, a: a);
+    show(state, host: host, view: LIST);
+}
+
 fn update(state: &mut Contacts, host: &mut std.Host, a: alloc.Allocator) {
+    // The phone's language changed: the page again, in it.
+    let locale = host_api.locale(host, a: a);
+    if not locale.view().eq(state.locale.view()) {
+        again(state, host: host, a: a);
+    }
     for e in dom.events(host, a: a).items() {
         if e.kind.view().eq("back") {
-            // The phone's Back, on a page of the app's own: to the list.
-            press(state, host: host, k: "back", a: a);
+            // The phone's Back, on a page of the app's own: the question
+            // away first, then the page before.
+            if state.asking {
+                asked(state, host: host, on: false);
+            } else if state.view == EDIT and state.editing.len() > 0 {
+                show(state, host: host, view: ONE);
+            } else {
+                show(state, host: host, view: LIST);
+            }
         } else if e.kind.view().eq("click") {
             match key_of(host, n: e.target, a: a) {
                 some(k) => { press(state, host: host, k: k.view(), a: a); }
                 none => { }
             }
-        } else if e.kind.view().eq("input") {
+        } else if e.kind.view().eq("input") or e.kind.view().eq("change") {
             if e.target == state.name_field {
                 state.name = alloc.String.from(e.value.view(), a);
             } else if e.target == state.number_field {
                 state.number = alloc.String.from(e.value.view(), a);
+                if e.kind.view().eq("change") {
+                    state.touched = true;
+                }
             } else if e.target == state.search {
                 state.find = alloc.String.from(e.value.view(), a);
                 state.seen = -1;
             }
+            judge(state, host: host, a: a);
         }
     }
     refresh(state, host: host, a: a);
 }
 
+/// The number as typed, a phone number's characters only: digits, a +
+/// before them, and spaces, hyphens and brackets between them, which are
+/// dropped, into out. Whether it is one: 3 to 15 digits (E.164's most).
+fn phone_number(typed: str, out: &mut alloc.String) -> bool {
+    var digits: u32 = 0;
+    for c in typed.bytes() {
+        let ch = c.*;
+        if ch >= '0' and ch <= '9' {
+            out.push_ascii(ch);
+            digits += 1;
+        } else if ch == '+' {
+            if out.len() > 0 {
+                return false;
+            }
+            out.push_ascii(ch);
+        } else if ch != ' ' and ch != '-' and ch != '(' and ch != ')' {
+            return false;
+        }
+    }
+    return digits >= 3 and digits <= 15;
+}
+
+/// Save on or off, as the form is good or not; the number's error said
+/// once it was left, or as soon as it has what no number has.
+fn judge(state: &mut Contacts, host: &mut std.Host, a: alloc.Allocator) {
+    var clean = alloc.String.init(a);
+    let good = phone_number(state.number.view(), out: &mut clean);
+    let named = trimmed(state.name.view()).len() > 0;
+    dom.toggle_class(host, item: state.ok, name: "off", on: not (good and named));
+    var wrong = false;
+    for c in state.number.view().bytes() {
+        let ch = c.*;
+        if not ((ch >= '0' and ch <= '9') or ch == '+' or ch == ' ' or ch == '-' or ch == '(' or ch == ')') {
+            wrong = true;
+        }
+    }
+    let said = wrong or (state.touched and state.number.len() > 0 and not good);
+    dom.toggle_class(host, item: state.warn, name: "hidden", on: not said);
+}
+
+/// s without the spaces at its ends.
+fn trimmed(s: str) -> str {
+    var from: usize = 0;
+    var to = s.len();
+    while from < to and s.bytes()[from] == ' ' {
+        from += 1;
+    }
+    while to > from and s.bytes()[to - 1] == ' ' {
+        to -= 1;
+    }
+    return s[from..to];
+}
+
 fn press(state: &mut Contacts, host: &mut std.Host, k: str, a: alloc.Allocator) {
     if k.eq("new") {
-        state.name = alloc.String.init(a);
-        state.number = alloc.String.init(a);
-        dom.set_attribute(host, item: state.name_field, name: "value", value_: "");
-        dom.set_attribute(host, item: state.number_field, name: "value", value_: "");
-        show(state, host: host, view: NEW);
-    } else if k.eq("close") or k.eq("back") {
+        state.editing = alloc.String.init(a);
+        fill_form(state, host: host, name: "", number: "", a: a);
+        dom.set_text(host, item: state.form_title, text: say(state.lang, "New contact"));
+        show(state, host: host, view: EDIT);
+    } else if k.eq("edit") {
+        state.editing = alloc.String.from(state.open.view(), a);
+        let all = contacts.list(host, a: a);
+        for c in all.items() {
+            if c.number.view().eq(state.open.view()) {
+                fill_form(state, host: host, name: c.name.view(), number: c.number.view(), a: a);
+            }
+        }
+        dom.set_text(host, item: state.form_title, text: say(state.lang, "Edit contact"));
+        show(state, host: host, view: EDIT);
+    } else if k.eq("close") {
+        if state.editing.len() > 0 {
+            show(state, host: host, view: ONE);
+        } else {
+            show(state, host: host, view: LIST);
+        }
+    } else if k.eq("back") {
         show(state, host: host, view: LIST);
     } else if k.eq("save") {
-        if state.name.len() > 0 and state.number.len() > 0 {
-            contacts.save(host, name: state.name.view(), number: state.number.view());
-            state.seen = -1;
+        var clean = alloc.String.init(a);
+        let name = trimmed(state.name.view());
+        if not phone_number(state.number.view(), out: &mut clean) or name.len() == 0 {
+            state.touched = true;
+            judge(state, host: host, a: a);
+            return;
+        }
+        // A number changed in an edit: the old one's name goes.
+        if state.editing.len() > 0 and not state.editing.view().eq(clean.view()) {
+            contacts.remove(host, number: state.editing.view());
+        }
+        contacts.save(host, name: name, number: clean.view());
+        state.seen = -1;
+        if state.editing.len() > 0 {
+            state.open = clean;
+            show(state, host: host, view: ONE);
+        } else {
             show(state, host: host, view: LIST);
         }
     } else if k.starts_with("open:") {
@@ -125,11 +440,37 @@ fn press(state: &mut Contacts, host: &mut std.Host, k: str, a: alloc.Allocator) 
         show(state, host: host, view: ONE);
     } else if k.eq("call") {
         telephony.dial(host, number: state.open.view());
+    } else if k.eq("message") {
+        // Messages, to write to it (an intent, arche-os T12).
+        var to = alloc.String.from("messages.component.wasm?to=", a);
+        to.push_str(state.open.view());
+        host_api.open_app(host, source: to.view());
     } else if k.eq("delete") {
+        asked(state, host: host, on: true);
+    } else if k.eq("keep") {
+        asked(state, host: host, on: false);
+    } else if k.eq("gone") {
+        asked(state, host: host, on: false);
         contacts.remove(host, number: state.open.view());
         state.seen = -1;
         show(state, host: host, view: LIST);
     }
+}
+
+/// The question about Delete up, or away.
+fn asked(state: &mut Contacts, host: &mut std.Host, on: bool) {
+    state.asking = on;
+    dom.toggle_class(host, item: state.ask, name: "hidden", on: not on);
+}
+
+/// The form's fields set to name and number, as one being edited has them.
+fn fill_form(state: &mut Contacts, host: &mut std.Host, name: str, number: str, a: alloc.Allocator) {
+    state.name = alloc.String.from(name, a);
+    state.number = alloc.String.from(number, a);
+    state.touched = false;
+    dom.set_attribute(host, item: state.name_field, name: "value", value_: name);
+    dom.set_attribute(host, item: state.number_field, name: "value", value_: number);
+    judge(state, host: host, a: a);
 }
 
 fn show(state: &mut Contacts, host: &mut std.Host, view: u32) {
@@ -146,6 +487,9 @@ fn show(state: &mut Contacts, host: &mut std.Host, view: u32) {
     } else {
         dom.set_attribute(host, item: dom.root(host), name: "data-back", value_: "1");
     }
+    if view == EDIT {
+        dom.focus(host, item: state.name_field);
+    }
 }
 
 /// c lowered, ASCII's letters only.
@@ -156,45 +500,193 @@ fn lower(c: u8) -> u8 {
     return c;
 }
 
-/// Whether words is in text, ASCII's letters' case aside.
+/// Whether text has words in it, in any case; any text has none.
 fn has(text: str, words: str) -> bool {
-    let t = text.bytes();
-    let w = words.bytes();
-    if w.len() == 0 {
+    if words.len() == 0 {
         return true;
     }
-    var i: usize = 0;
-    while i + w.len() <= t.len() : (i += 1) {
-        var j: usize = 0;
-        while j < w.len() and lower(t[i + j]) == lower(w[j]) : (j += 1) {
+    let t = text.bytes();
+    let w = words.bytes();
+    var at: usize = 0;
+    while at + w.len() <= t.len() : (at += 1) {
+        var k: usize = 0;
+        while k < w.len() and lower(t[at + k]) == lower(w[k]) : (k += 1) {
         }
-        if j == w.len() {
+        if k == w.len() {
             return true;
         }
     }
     return false;
 }
 
-/// Whether x comes before y by name, ASCII's letters' case aside.
+/// Whether x comes before y, in any case.
 fn before(x: str, y: str) -> bool {
-    let p = x.bytes();
-    let q = y.bytes();
-    var i: usize = 0;
-    while i < p.len() and i < q.len() : (i += 1) {
-        if lower(p[i]) != lower(q[i]) {
-            return lower(p[i]) < lower(q[i]);
+    let a = x.bytes();
+    let b = y.bytes();
+    var k: usize = 0;
+    while k < a.len() and k < b.len() : (k += 1) {
+        let p = lower(a[k]);
+        let q = lower(b[k]);
+        if p != q {
+            return p < q;
         }
     }
-    return p.len() < q.len();
+    return a.len() < b.len();
 }
 
-/// The list, and the one opened, made again when the contacts or the
-/// search changed.
+/// n with two digits.
+fn two(out: &mut alloc.String, n: i64) {
+    if n < 10 {
+        out.push_str("0");
+    }
+    out.push_u64(n as u64);
+}
+
+/// A month's short name in lang, 0 for January.
+fn month_name(lang: u32, m: i64) -> str {
+    if lang == UZ {
+        if m == 0 { return "yan"; }
+        if m == 1 { return "fev"; }
+        if m == 2 { return "mar"; }
+        if m == 3 { return "apr"; }
+        if m == 4 { return "may"; }
+        if m == 5 { return "iyn"; }
+        if m == 6 { return "iyl"; }
+        if m == 7 { return "avg"; }
+        if m == 8 { return "sen"; }
+        if m == 9 { return "okt"; }
+        if m == 10 { return "noy"; }
+        return "dek";
+    }
+    if lang == RU {
+        if m == 0 { return "янв"; }
+        if m == 1 { return "фев"; }
+        if m == 2 { return "мар"; }
+        if m == 3 { return "апр"; }
+        if m == 4 { return "мая"; }
+        if m == 5 { return "июн"; }
+        if m == 6 { return "июл"; }
+        if m == 7 { return "авг"; }
+        if m == 8 { return "сен"; }
+        if m == 9 { return "окт"; }
+        if m == 10 { return "ноя"; }
+        return "дек";
+    }
+    if m == 0 { return "Jan"; }
+    if m == 1 { return "Feb"; }
+    if m == 2 { return "Mar"; }
+    if m == 3 { return "Apr"; }
+    if m == 4 { return "May"; }
+    if m == 5 { return "Jun"; }
+    if m == 6 { return "Jul"; }
+    if m == 7 { return "Aug"; }
+    if m == 8 { return "Sep"; }
+    if m == 9 { return "Oct"; }
+    if m == 10 { return "Nov"; }
+    return "Dec";
+}
+
+/// The day, from 1970-01-01 0, of days into a civil date: its month (0 for
+/// January) and its day of the month.
+fn month_day(days: i64) -> [2]i64 {
+    let z = days + 719468;
+    var era = z / 146097;
+    if z < 0 {
+        era = (z - 146096) / 146097;
+    }
+    let doe = z - era * 146097;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    var m = mp + 2;
+    if mp >= 10 {
+        m = mp - 10;
+    }
+    return [m, d];
+}
+
+/// When a call was, as a phone's history says it in lang: its time today,
+/// else its day and month ("Mar 5", "5-mar", "5 мар"), into out.
+fn when_said(lang: u32, at_millis: i64, now_millis: i64, offset: i64, out: &mut alloc.String) {
+    let local = at_millis / 60000 + offset;
+    let today = (now_millis / 60000 + offset) / 1440;
+    if local / 1440 == today {
+        two(out, n: local % 1440 / 60);
+        out.push_str(":");
+        two(out, n: local % 60);
+        return;
+    }
+    let md = month_day(local / 1440);
+    if lang == UZ {
+        out.push_u64(md[1] as u64);
+        out.push_str("-");
+        out.push_str(month_name(lang, md[0]));
+    } else if lang == RU {
+        out.push_u64(md[1] as u64);
+        out.push_str(" ");
+        out.push_str(month_name(lang, md[0]));
+    } else {
+        out.push_str(month_name(lang, md[0]));
+        out.push_str(" ");
+        out.push_u64(md[1] as u64);
+    }
+}
+
+/// How long a call went on, in lang: "6m 31s", "45s"; "6 daq 31 s",
+/// "6 мин 31 с".
+fn length_said(lang: u32, seconds: u32, out: &mut alloc.String) {
+    if seconds >= 60 {
+        out.push_u64((seconds / 60) as u64);
+        if lang == UZ {
+            out.push_str(" daq ");
+        } else if lang == RU {
+            out.push_str(" мин ");
+        } else {
+            out.push_str("m ");
+        }
+    }
+    out.push_u64((seconds % 60) as u64);
+    if lang == UZ {
+        out.push_str(" s");
+    } else if lang == RU {
+        out.push_str(" с");
+    } else {
+        out.push_str("s");
+    }
+}
+
+/// How many contacts there are, in lang: "2 contacts", "2 ta kontakt",
+/// "2 контакта".
+fn count_said(lang: u32, n: u64, out: &mut alloc.String) {
+    out.push_u64(n);
+    if lang == UZ {
+        out.push_str(" ta kontakt");
+    } else if lang == RU {
+        let form = ru_form(n);
+        if form == 0 {
+            out.push_str(" контакт");
+        } else if form == 1 {
+            out.push_str(" контакта");
+        } else {
+            out.push_str(" контактов");
+        }
+    } else if n == 1 {
+        out.push_str(" contact");
+    } else {
+        out.push_str(" contacts");
+    }
+}
+
 fn refresh(state: &mut Contacts, host: &mut std.Host, a: alloc.Allocator) {
     let all = contacts.list(host, a: a);
-    var mark = all.len() as i64;
+    let had = telephony.history(host, a: a);
+    var mark = all.len() as i64 * 1009 + had.len() as i64;
     for c in all.items() {
         mark = mark * 31 + c.name.len() as i64 * 7 + c.number.len() as i64;
+    }
+    if had.len() > 0 {
+        mark = mark * 1000003 + had.items()[had.len() - 1].at_millis;
     }
     if mark == state.seen {
         return;
@@ -256,17 +748,14 @@ fn refresh(state: &mut Contacts, host: &mut std.Host, a: alloc.Allocator) {
     }
     var said = alloc.String.init(a);
     if all.len() > 0 {
-        said.push_u64(all.len() as u64);
-        if all.len() == 1 {
-            said.push_str(" contact");
-        } else {
-            said.push_str(" contacts");
-        }
+        count_said(state.lang, n: all.len() as u64, out: &mut said);
     }
     dom.set_text(host, item: state.count, text: said.view());
     dom.toggle_class(host, item: state.empty, name: "hidden", on: all.len() > 0);
-    // The one opened, if it is still there.
+    // The one opened, if it is still there: its picture and name, its
+    // number with Call and Message, and the calls with it.
     var who = alloc.String.init(a);
+    var num = alloc.String.init(a);
     var found = false;
     for c in all.items() {
         if c.number.view().eq(state.open.view()) {
@@ -278,12 +767,71 @@ fn refresh(state: &mut Contacts, host: &mut std.Host, a: alloc.Allocator) {
             appkit.escaped(&mut who, s: l.view());
             who.push_str("</div><div class='name'>");
             appkit.escaped(&mut who, s: c.name.view());
-            who.push_str("</div><div class='num'>");
-            appkit.escaped(&mut who, s: c.number.view());
             who.push_str("</div>");
+            num.push_str("<div class='row'><div class='lines'><div class='primary'>");
+            appkit.escaped(&mut num, s: c.number.view());
+            num.push_str("</div><div class='secondary'>");
+            num.push_str(say(state.lang, "Mobile"));
+            num.push_str("</div></div><button class='round' data-k='call' aria-label='");
+            num.push_str(say(state.lang, "Call"));
+            num.push_str("'><span class='icon fill'>call</span></button><button class='round' data-k='message' aria-label='");
+            num.push_str(say(state.lang, "Message"));
+            num.push_str("'><span class='icon fill'>chat</span></button></div>");
         }
     }
     if not dom.set_markup(host, item: state.who, markup: who.view(), why: &mut why, a: a) {
+        host_api.log(host, msg: why.view());
+    }
+    if not dom.set_markup(host, item: state.num, markup: num.view(), why: &mut why, a: a) {
+        host_api.log(host, msg: why.view());
+    }
+    var calls = alloc.String.init(a);
+    let now = host_api.now_millis(host);
+    let offset = host_api.utc_offset(host) as i64;
+    var shown: usize = 0;
+    var k2 = had.len();
+    while k2 > 0 and shown < MOST_CALLS {
+        k2 -= 1;
+        let c = &had.items()[k2];
+        if not c.number.view().eq(state.open.view()) {
+            continue;
+        }
+        shown += 1;
+        let missed = c.incoming and not c.answered;
+        var icon = "call_made";
+        var what = alloc.String.from(say(state.lang, "Outgoing"), a);
+        if missed {
+            icon = "call_missed";
+            what = alloc.String.from(say(state.lang, "Missed"), a);
+        } else if c.incoming {
+            icon = "call_received";
+            what = alloc.String.from(say(state.lang, "Incoming"), a);
+        }
+        if c.answered and c.seconds > 0 {
+            what.push_str(" · ");
+            length_said(lang: state.lang, seconds: c.seconds, out: &mut what);
+        }
+        if missed {
+            calls.push_str("<div class='row missed'>");
+        } else {
+            calls.push_str("<div class='row'>");
+        }
+        calls.push_str("<span class='icon'>");
+        calls.push_str(icon);
+        calls.push_str("</span><div class='lines'><div class='primary'>");
+        calls.push_str(what.view());
+        calls.push_str("</div></div><span class='when'>");
+        var when = alloc.String.init(a);
+        when_said(state.lang, at_millis: c.at_millis, now_millis: now, offset: offset, out: &mut when);
+        calls.push_str(when.view());
+        calls.push_str("</span></div>");
+    }
+    if shown == 0 {
+        calls.push_str("<div class='nocalls'>");
+        calls.push_str(say(state.lang, "No calls yet"));
+        calls.push_str("</div>");
+    }
+    if not dom.set_markup(host, item: state.calls, markup: calls.view(), why: &mut why, a: a) {
         host_api.log(host, msg: why.view());
     }
     if state.view == ONE and not found {
