@@ -2,7 +2,7 @@
 
 --- frame 0  (clicks fed to guest: []) ---
    [page] 60 nodes
-   #1 body
+   #1 body {back}
      #2 div.app {click input}
        #3 div.content
          #4 div.view
@@ -68,7 +68,7 @@
 --- frame 1  (clicks fed to guest: []) ---
    [tap] #58
    [page] 60 nodes
-   #1 body
+   #1 body [data-back="1"] {back}
      #2 div.app {click input}
        #3 div.content
          #4 div.view.hidden
@@ -133,7 +133,7 @@
 --- frame 2  (clicks fed to guest: []) ---
    [type] #33 = "Ada"
    [page] 60 nodes
-   #1 body
+   #1 body [data-back="1"] {back}
      #2 div.app {click input}
        #3 div.content
          #4 div.view.hidden
@@ -198,7 +198,7 @@
 --- frame 3  (clicks fed to guest: []) ---
    [type] #38 = "+998901112233"
    [page] 60 nodes
-   #1 body
+   #1 body [data-back="1"] {back}
      #2 div.app {click input}
        #3 div.content
          #4 div.view.hidden
@@ -263,7 +263,7 @@
 --- frame 4  (clicks fed to guest: []) ---
    [tap] #25
    [page] 60 nodes
-   #1 body
+   #1 body {back}
      #2 div.app {click input}
        #3 div.content
          #4 div.view
@@ -329,7 +329,7 @@
 --- frame 5  (clicks fed to guest: []) ---
    [tap] #58
    [page] 60 nodes
-   #1 body
+   #1 body [data-back="1"] {back}
      #2 div.app {click input}
        #3 div.content
          #4 div.view.hidden
@@ -394,7 +394,7 @@
 --- frame 6  (clicks fed to guest: []) ---
    [tap] #20
    [page] 60 nodes
-   #1 body
+   #1 body {back}
      #2 div.app {click input}
        #3 div.content
          #4 div.view
